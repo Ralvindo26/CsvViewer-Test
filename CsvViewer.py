@@ -20,7 +20,7 @@ def show_csv():
             'JamMasuk': 'Jam Masuk',
             'JamKeluar': 'Jam Keluar'
         })
-        df = df[['Nomor', 'Jam Masuk', 'Jam Keluar', 'Kendaraan', 'Tarif']]
+        df = df[['Nomor', 'Jam Masuk', 'Jam Keluar', 'Kendaraan', 'Tarif', 'Keterangan']]
 
         table_html = df.to_html(classes='table table-bordered text-center', index=False)
 
