@@ -7,8 +7,13 @@ app = Flask(__name__)
 
 CSV_FILE_ID = '1aDVgRz6BEVb20armjOhwUE0Lyq0Q8zFB'
 CSV_URL = f"https://drive.google.com/uc?id={CSV_FILE_ID}&export=download"
+
+CSV_KARYAWAN_FILE_ID = '1r1clq7vLPdMw5nQ0fto4zLBbrhnbnoZ-'
+CSV_KARYAWAN_URL = f"https://drive.google.com/uc?id={CSV_KARYAWAN_FILE_ID}&export=download"
+
 FOTO_FOLDER_ID = '1SsQPURPWZ-FzfIJOZWFumY5XTBrNEQiO'
 API_KEY = 'AIzaSyDszO0AB7zcrqeMasdB0lCCzqAUfMxn9xk'
+
 
 def get_drive_image_url(nama_file):
     query = f"name='{nama_file}.jpg' and '{FOTO_FOLDER_ID}' in parents"
@@ -21,12 +26,27 @@ def get_drive_image_url(nama_file):
             return f"https://drive.google.com/uc?id={file_id}"
     return None
 
+
+def get_karyawan_table():
+    try:
+        response = requests.get(CSV_KARYAWAN_URL)
+        response.raise_for_status()
+        df = pd.read_csv(StringIO(response.content.decode('utf-8'))).fillna('')
+        return df.to_html(classes='table table-bordered text-center', escape=False, index=False)
+    except Exception as e:
+        return f"<div class='alert alert-danger'>Gagal memuat data karyawan: {e}</div>"
+
+
 @app.route('/')
 def index():
+    tampil_karyawan = request.args.get('tampil_karyawan') == '1'
+    karyawan_table = get_karyawan_table() if tampil_karyawan else ''
+
     return render_template_string('''
+    <!DOCTYPE html>
     <html>
     <head>
-        <title>Data Parkir</title>
+        <title>Data Parkir & Karyawan</title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
         <style>
@@ -41,18 +61,18 @@ def index():
     </head>
     <body>
         <div class="container mt-4 mb-4">
-            <h2 class="mb-3 text-left">Data Parkir</h2>
+            <h2>Data Parkir</h2>
             <form method="get" class="mb-4">
                 <div class="form-row">
-                    <div class="form-group col-12 col-sm-6">
+                    <div class="form-group col-sm-6">
                         <label>Dari Tanggal</label>
                         <input type="date" name="tgl_mulai" class="form-control" value="{{ request.args.get('tgl_mulai', '') }}">
                     </div>
-                    <div class="form-group col-12 col-sm-6">
+                    <div class="form-group col-sm-6">
                         <label>Sampai Tanggal</label>
                         <input type="date" name="tgl_akhir" class="form-control" value="{{ request.args.get('tgl_akhir', '') }}">
                     </div>
-                    <div class="form-group col-12 col-sm-6">
+                    <div class="form-group col-sm-6">
                         <label>Jenis Kendaraan</label>
                         <select name="kendaraan_jenis" class="form-control">
                             <option value="semua">Semua</option>
@@ -60,7 +80,7 @@ def index():
                             <option value="motor" {% if request.args.get('kendaraan_jenis') == 'motor' %}selected{% endif %}>Motor</option>
                         </select>
                     </div>
-                    <div class="form-group col-12 col-sm-6">
+                    <div class="form-group col-sm-6">
                         <label>Jenis Parkir</label>
                         <select name="keterangan" class="form-control">
                             <option value="semua">Semua</option>
@@ -69,62 +89,67 @@ def index():
                         </select>
                     </div>
                 </div>
+
                 <div class="form-row">
-                    <div class="col-12 col-sm-4 mb-2">
+                    <div class="col-sm-3 mb-2">
                         <button type="submit" class="btn btn-primary btn-block">Terapkan Filter</button>
                     </div>
-                    <div class="col-12 col-sm-4 mb-2">
+                    <div class="col-sm-3 mb-2">
                         <button type="submit" name="hitung" value="1" class="btn btn-success btn-block">Hitung Total Tarif</button>
                     </div>
-                    <div class="col-12 col-sm-4 mb-2">
+                    <div class="col-sm-3 mb-2">
                         <a href="/" class="btn btn-secondary btn-block">Reset Filter</a>
+                    </div>
+                    <div class="col-sm-3 mb-2">
+                        <a href="?tampil_karyawan={{ 0 if tampil_karyawan else 1 }}" class="btn btn-info btn-block">
+                            {{ 'Sembunyikan' if tampil_karyawan else 'Tampil' }} Tabel Karyawan
+                        </a>
                     </div>
                 </div>
             </form>
 
-            <div id="total-tarif" class="mb-3"></div>
-            <div class="table-responsive" id="tabel-parkir"></div>
-        </div>
-        <script>
-            function loadTableData() {
-                const params = new URLSearchParams(window.location.search);
-                fetch('/data?' + params.toString())
-                    .then(response => response.json())
-                    .then(data => {
-                        document.getElementById('tabel-parkir').innerHTML = data.table;
-                        if (data.total_tarif !== '') {
-                            document.getElementById('total-tarif').innerHTML =
-                                `<div class="alert alert-info text-center"><strong>Total Tarif:</strong> ${data.total_tarif}</div>`;
-                        } else {
-                            document.getElementById('total-tarif').innerHTML = '';
-                        }
-                    })
-                    .catch(err => {
-                        document.getElementById('tabel-parkir').innerHTML =
-                            "<div class='alert alert-danger'>Gagal memuat data</div>";
-                        document.getElementById('total-tarif').innerHTML = '';
-                    });
-            }
+           {% if tampil_karyawan %}
+<h4 class="mb-3">Data Karyawan</h4>
+<div class="table-responsive mb-4">
+    {{ karyawan_table|safe }}
+</div>
+{% endif %}
 
-            loadTableData();
-            setInterval(loadTableData, 10000);
+<div id="total-tarif" class="mb-3"></div>
+<div class="table-responsive mb-5" id="tabel-parkir"></div>
+        </div>
+
+        <script>
+        function loadTableData() {
+            const params = new URLSearchParams(window.location.search);
+            fetch('/data?' + params.toString())
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('tabel-parkir').innerHTML = data.table;
+                    if (data.total_tarif !== '') {
+                        document.getElementById('total-tarif').innerHTML =
+                            `<div class="alert alert-info text-center"><strong>Total Tarif:</strong> ${data.total_tarif}</div>`;
+                    } else {
+                        document.getElementById('total-tarif').innerHTML = '';
+                    }
+                });
+        }
+
+        loadTableData();
+        setInterval(loadTableData, 10000);
         </script>
     </body>
     </html>
-    ''')
+    ''', tampil_karyawan=tampil_karyawan, karyawan_table=karyawan_table)
+
 
 @app.route('/data')
 def get_table_ajax():
     try:
         response = requests.get(CSV_URL)
         response.raise_for_status()
-        csv_content = response.content.decode('utf-8')
-        df = pd.read_csv(StringIO(csv_content)).fillna('')
-
-        df = df.rename(columns={
-            'JamMasuk': 'Jam Masuk',
-            'JamKeluar': 'Jam Keluar'
-        })
+        df = pd.read_csv(StringIO(response.content.decode('utf-8'))).fillna('')
+        df = df.rename(columns={'JamMasuk': 'Jam Masuk', 'JamKeluar': 'Jam Keluar'})
 
         tgl_mulai = request.args.get('tgl_mulai')
         tgl_akhir = request.args.get('tgl_akhir')
@@ -161,11 +186,11 @@ def get_table_ajax():
 
         df = df[['Nomor', 'Jam Masuk', 'Jam Keluar', 'Kendaraan', 'Tarif', 'Keterangan']]
         table_html = df.to_html(classes='table table-bordered text-center', escape=False, index=False)
-
         return jsonify({'table': table_html, 'total_tarif': total_tarif})
 
     except Exception as e:
         return jsonify({'table': f"<div class='alert alert-danger'>Error: {e}</div>", 'total_tarif': ''})
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=5050)
