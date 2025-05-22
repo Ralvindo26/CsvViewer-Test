@@ -88,16 +88,20 @@ def index():
                 .btn { width: 100%; margin-bottom: 10px; }
                 .menu-bar { flex-direction: column; }
             }
+            .gap-2 > * {
+    margin-right: 0.5rem;
+    margin-bottom: 0.5rem;
+}
         </style>
     </head>
     <body>
         <div class="container mt-4 mb-4">
             <div class="d-flex flex-column align-items-start mb-3">
                 <h2 class="mb-2">Data Parkir</h2>
-                <div class="menu-bar w-100 justify-content-start d-flex">
-                    <button onclick="toggleFilter()">Filter Data</button>
-                    <button onclick="toggleKaryawan()">Tabel Karyawan</button>
-                </div>
+               <div class="d-flex flex-wrap gap-2 mb-3">
+    <button onclick="toggleFilter()" class="btn btn-outline-primary mr-2">Filter Data</button>
+    <button onclick="toggleKaryawan()" class="btn btn-outline-primary">Tabel Karyawan</button>
+</div>
             </div>
 
             <form method="get" class="mb-4" id="filter-form" style="display: none;">
