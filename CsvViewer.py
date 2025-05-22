@@ -5,14 +5,15 @@ from io import StringIO
 
 app = Flask(__name__)
 
-# File CSV dan Foto
 CSV_FILE_ID = '1aDVgRz6BEVb20armjOhwUE0Lyq0Q8zFB'
+CSV_URL = f"https://drive.google.com/uc?id={CSV_FILE_ID}&export=download"
+
 CSV_KARYAWAN_FILE_ID = '1r1clq7vLPdMw5nQ0fto4zLBbrhnbnoZ-'
+CSV_KARYAWAN_URL = f"https://drive.google.com/uc?id={CSV_KARYAWAN_FILE_ID}&export=download"
+
 FOTO_FOLDER_ID = '1SsQPURPWZ-FzfIJOZWFumY5XTBrNEQiO'
 API_KEY = 'AIzaSyDszO0AB7zcrqeMasdB0lCCzqAUfMxn9xk'
 
-CSV_URL = f"https://drive.google.com/uc?id={CSV_FILE_ID}&export=download"
-CSV_KARYAWAN_URL = f"https://drive.google.com/uc?id={CSV_KARYAWAN_FILE_ID}&export=download"
 
 def get_drive_image_url(nama_file):
     query = f"name='{nama_file}.jpg' and '{FOTO_FOLDER_ID}' in parents"
@@ -25,6 +26,7 @@ def get_drive_image_url(nama_file):
             return f"https://drive.google.com/uc?id={file_id}"
     return None
 
+
 @app.route('/')
 def index():
     return render_template_string('''
@@ -35,20 +37,52 @@ def index():
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
         <style>
-            th, td { text-align: center; vertical-align: middle; word-break: break-word; }
+            body {
+                padding-bottom: 50px;
+            }
+            .menu-bar {
+    background: #007bff;
+    color: white;
+    padding: 10px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+    border-radius: 5px;
+}
+            .menu-bar button {
+                background-color: white;
+                color: #007bff;
+                border: none;
+                padding: 6px 16px;
+                border-radius: 5px;
+                font-weight: bold;
+                transition: background 0.3s;
+            }
+            .menu-bar button:hover {
+                background-color: #e6e6e6;
+            }
+            th, td { text-align: center; vertical-align: middle; }
             .table-responsive { overflow-x: auto; }
             @media (max-width: 576px) {
                 h2 { font-size: 1.5rem; }
                 .form-group label { font-size: 0.9rem; }
                 .btn { width: 100%; margin-bottom: 10px; }
-                .table { font-size: 0.8rem; }
+                .menu-bar { flex-direction: column; }
             }
         </style>
     </head>
     <body>
         <div class="container mt-4 mb-4">
-            <h2>Data Parkir</h2>
-            <form method="get" class="mb-4">
+           <div class="d-flex flex-column align-items-start mb-3">
+    <h2 class="mb-2">Data Parkir</h2>
+    <div class="menu-bar w-100 justify-content-start">
+        <button onclick="toggleFilter()">Filter Data</button>
+        <button onclick="toggleKaryawan()">Tabel Karyawan</button>
+    </div>
+</div>
+
+            <form method="get" class="mb-4" id="filter-form" style="display: none;">
                 <div class="form-row">
                     <div class="form-group col-sm-6">
                         <label>Dari Tanggal</label>
@@ -76,61 +110,70 @@ def index():
                     </div>
                 </div>
                 <div class="form-row">
-                    <div class="col-sm-3 mb-2">
+                    <div class="col-sm-4 mb-2">
                         <button type="submit" class="btn btn-primary btn-block">Terapkan Filter</button>
                     </div>
-                    <div class="col-sm-3 mb-2">
+                    <div class="col-sm-4 mb-2">
                         <button type="submit" name="hitung" value="1" class="btn btn-success btn-block">Hitung Total Tarif</button>
                     </div>
-                    <div class="col-sm-3 mb-2">
+                    <div class="col-sm-4 mb-2">
                         <a href="/" class="btn btn-secondary btn-block">Reset Filter</a>
-                    </div>
-                    <div class="col-sm-3 mb-2">
-                        <button id="btn-karyawan" type="button" class="btn btn-info btn-block">Tampil Tabel Karyawan</button>
                     </div>
                 </div>
             </form>
 
-            <div id="tabel-karyawan" class="mb-4" style="display: none;"></div>
+            <div id="tabel-karyawan" class="table-responsive mb-4"></div>
             <div id="total-tarif" class="mb-3"></div>
             <div class="table-responsive mb-5" id="tabel-parkir"></div>
         </div>
 
         <script>
-        function loadTableData() {
-            const params = new URLSearchParams(window.location.search);
-            fetch('/data?' + params.toString())
-                .then(response => response.json())
-                .then(data => {
-                    document.getElementById('tabel-parkir').innerHTML = data.table;
-                    document.getElementById('total-tarif').innerHTML =
-                        data.total_tarif !== '' ?
-                        `<div class="alert alert-info text-center"><strong>Total Tarif:</strong> ${data.total_tarif}</div>` : '';
-                });
-        }
-
-        function toggleKaryawanTable() {
-            const container = document.getElementById('tabel-karyawan');
-            if (container.style.display === 'none') {
-                fetch('/data_karyawan')
-                    .then(response => response.text())
-                    .then(html => {
-                        container.innerHTML = html;
-                        container.style.display = 'block';
+            function loadTableData() {
+                const params = new URLSearchParams(window.location.search);
+                fetch('/data?' + params.toString())
+                    .then(response => response.json())
+                    .then(data => {
+                        document.getElementById('tabel-parkir').innerHTML = data.table;
+                        if (data.total_tarif !== '') {
+                            document.getElementById('total-tarif').innerHTML =
+                                `<div class="alert alert-info text-center"><strong>Total Tarif:</strong> ${data.total_tarif}</div>`;
+                        } else {
+                            document.getElementById('total-tarif').innerHTML = '';
+                        }
                     });
-            } else {
-                container.style.display = 'none';
-                container.innerHTML = '';
             }
-        }
 
-        document.getElementById('btn-karyawan').addEventListener('click', toggleKaryawanTable);
-        loadTableData();
-        setInterval(loadTableData, 10000);
+            function toggleKaryawan() {
+                const div = document.getElementById('tabel-karyawan');
+                if (div.innerHTML.trim() === '') {
+                    fetch('/data_karyawan')
+                        .then(response => response.text())
+                        .then(html => {
+                            document.getElementById('filter-form').style.display = 'none';
+                            div.innerHTML = html;
+                        });
+                } else {
+                    div.innerHTML = '';
+                }
+            }
+
+            function toggleFilter() {
+                const form = document.getElementById('filter-form');
+                if (form.style.display === 'none' || form.style.display === '') {
+                    form.style.display = 'block';
+                    document.getElementById('tabel-karyawan').innerHTML = '';
+                } else {
+                    form.style.display = 'none';
+                }
+            }
+
+            loadTableData();
+            setInterval(loadTableData, 10000);
         </script>
     </body>
     </html>
     ''')
+
 
 @app.route('/data')
 def get_table_ajax():
@@ -174,15 +217,12 @@ def get_table_ajax():
                 total_tarif = 'Tidak valid'
 
         df = df[['Nomor', 'Jam Masuk', 'Jam Keluar', 'Kendaraan', 'Tarif', 'Keterangan']]
-        table_html = f'''
-        <div class="table-responsive">
-            {df.to_html(classes='table table-bordered text-center', escape=False, index=False)}
-        </div>
-        '''
+        table_html = df.to_html(classes='table table-bordered text-center table-sm', escape=False, index=False)
         return jsonify({'table': table_html, 'total_tarif': total_tarif})
 
     except Exception as e:
         return jsonify({'table': f"<div class='alert alert-danger'>Error: {e}</div>", 'total_tarif': ''})
+
 
 @app.route('/data_karyawan')
 def get_karyawan_data():
@@ -190,14 +230,11 @@ def get_karyawan_data():
         response = requests.get(CSV_KARYAWAN_URL)
         response.raise_for_status()
         df = pd.read_csv(StringIO(response.content.decode('utf-8'))).fillna('')
-        table_html = f'''
-        <div class="table-responsive">
-            {df.to_html(classes='table table-bordered text-center', escape=False, index=False)}
-        </div>
-        '''
+        table_html = df.to_html(classes='table table-bordered text-center table-sm', escape=False, index=False)
         return table_html
     except Exception as e:
         return f"<div class='alert alert-danger'>Gagal memuat data karyawan: {e}</div>"
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=5050)
