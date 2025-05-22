@@ -40,20 +40,7 @@ def index():
             body {
                 padding-bottom: 50px;
             }
-            
-            .menu-bar {
-    background: #007bff;
-    color: white;
-    padding: 10px;
-    display: flex;
-    justify-content: flex-start;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin-bottom: 20px;
-    border-radius: 5px;
-}
-
-.menu-bar button {
+            .menu-bar button {
     flex: 1;
     min-width: 120px;
     white-space: nowrap;
@@ -64,6 +51,16 @@ def index():
         align-items: stretch;
     }
 }
+            
+            .menu-bar button {
+                background-color: white;
+                color: #007bff;
+                border: none;
+                padding: 6px 16px;
+                border-radius: 5px;
+                font-weight: bold;
+                transition: background 0.3s;
+            }
             .menu-bar button:hover {
                 background-color: #e6e6e6;
             }
