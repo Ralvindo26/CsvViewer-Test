@@ -41,17 +41,18 @@ def index():
                 padding-bottom: 50px;
             }
             .menu-bar button {
-    flex: 1;
-    min-width: 120px;
-    white-space: nowrap;
-}
-@media (max-width: 400px) {
-    .menu-bar {
-        flex-direction: column;
-        align-items: stretch;
-    }
-}
-            
+                flex: 1;
+                min-width: 120px;
+                white-space: nowrap;
+            }
+            @media (max-width: 400px) {
+                .menu-bar {
+                    background: #007bff;
+                    flex-direction: column;
+                    align-items: stretch;
+                }
+            }
+
             .menu-bar button {
                 background-color: white;
                 color: #007bff;
@@ -65,24 +66,27 @@ def index():
                 background-color: #e6e6e6;
             }
             th, td { text-align: center; vertical-align: middle; }
-            .table-responsive { overflow-x: auto; }
             @media (max-width: 576px) {
                 h2 { font-size: 1.5rem; }
                 .form-group label { font-size: 0.9rem; }
                 .btn { width: 100%; margin-bottom: 10px; }
                 .menu-bar { flex-direction: column; }
             }
+            table {
+                table-layout: auto;
+                word-wrap: break-word;
+            }
         </style>
     </head>
     <body>
         <div class="container mt-4 mb-4">
-           <div class="d-flex flex-column align-items-start mb-3">
-    <h2 class="mb-2">Data Parkir</h2>
-    <div class="menu-bar w-100 justify-content-start">
-        <button onclick="toggleFilter()">Filter Data</button>
-        <button onclick="toggleKaryawan()">Tabel Karyawan</button>
-    </div>
-</div>
+            <div class="d-flex flex-column align-items-start mb-3">
+                <h2 class="mb-2">Data Parkir</h2>
+                <div class="menu-bar w-100 justify-content-start">
+                    <button onclick="toggleFilter()">Filter Data</button>
+                    <button onclick="toggleKaryawan()">Tabel Karyawan</button>
+                </div>
+            </div>
 
             <form method="get" class="mb-4" id="filter-form" style="display: none;">
                 <div class="form-row">
@@ -124,9 +128,9 @@ def index():
                 </div>
             </form>
 
-            <div id="tabel-karyawan" class="table-responsive mb-4"></div>
+            <div id="tabel-karyawan" class="mb-4"></div>
             <div id="total-tarif" class="mb-3"></div>
-            <div class="table-responsive mb-5" id="tabel-parkir"></div>
+            <div id="tabel-parkir" class="mb-5"></div>
         </div>
 
         <script>
@@ -219,7 +223,8 @@ def get_table_ajax():
                 total_tarif = 'Tidak valid'
 
         df = df[['Nomor', 'Jam Masuk', 'Jam Keluar', 'Kendaraan', 'Tarif', 'Keterangan']]
-        table_html = df.to_html(classes='table table-bordered text-center table-sm', escape=False, index=False)
+        # Tambahkan div class table-responsive di sini
+        table_html = f'<div class="table-responsive">{df.to_html(classes="table table-bordered text-center table-sm", escape=False, index=False)}</div>'
         return jsonify({'table': table_html, 'total_tarif': total_tarif})
 
     except Exception as e:
@@ -232,7 +237,7 @@ def get_karyawan_data():
         response = requests.get(CSV_KARYAWAN_URL)
         response.raise_for_status()
         df = pd.read_csv(StringIO(response.content.decode('utf-8'))).fillna('')
-        table_html = df.to_html(classes='table table-bordered text-center table-sm', escape=False, index=False)
+        table_html = f'<div class="table-responsive">{df.to_html(classes="table table-bordered text-center table-sm", escape=False, index=False)}</div>'
         return table_html
     except Exception as e:
         return f"<div class='alert alert-danger'>Gagal memuat data karyawan: {e}</div>"
