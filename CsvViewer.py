@@ -5,15 +5,14 @@ from io import StringIO
 
 app = Flask(__name__)
 
+# File CSV dan Foto
 CSV_FILE_ID = '1aDVgRz6BEVb20armjOhwUE0Lyq0Q8zFB'
-CSV_URL = f"https://drive.google.com/uc?id={CSV_FILE_ID}&export=download"
-
 CSV_KARYAWAN_FILE_ID = '1r1clq7vLPdMw5nQ0fto4zLBbrhnbnoZ-'
-CSV_KARYAWAN_URL = f"https://drive.google.com/uc?id={CSV_KARYAWAN_FILE_ID}&export=download"
-
 FOTO_FOLDER_ID = '1SsQPURPWZ-FzfIJOZWFumY5XTBrNEQiO'
 API_KEY = 'AIzaSyDszO0AB7zcrqeMasdB0lCCzqAUfMxn9xk'
 
+CSV_URL = f"https://drive.google.com/uc?id={CSV_FILE_ID}&export=download"
+CSV_KARYAWAN_URL = f"https://drive.google.com/uc?id={CSV_KARYAWAN_FILE_ID}&export=download"
 
 def get_drive_image_url(nama_file):
     query = f"name='{nama_file}.jpg' and '{FOTO_FOLDER_ID}' in parents"
@@ -26,22 +25,8 @@ def get_drive_image_url(nama_file):
             return f"https://drive.google.com/uc?id={file_id}"
     return None
 
-
-def get_karyawan_table():
-    try:
-        response = requests.get(CSV_KARYAWAN_URL)
-        response.raise_for_status()
-        df = pd.read_csv(StringIO(response.content.decode('utf-8'))).fillna('')
-        return df.to_html(classes='table table-bordered text-center', escape=False, index=False)
-    except Exception as e:
-        return f"<div class='alert alert-danger'>Gagal memuat data karyawan: {e}</div>"
-
-
 @app.route('/')
 def index():
-    tampil_karyawan = request.args.get('tampil_karyawan') == '1'
-    karyawan_table = get_karyawan_table() if tampil_karyawan else ''
-
     return render_template_string('''
     <!DOCTYPE html>
     <html>
@@ -50,12 +35,13 @@ def index():
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
         <style>
-            th, td { text-align: center; vertical-align: middle; }
+            th, td { text-align: center; vertical-align: middle; word-break: break-word; }
             .table-responsive { overflow-x: auto; }
             @media (max-width: 576px) {
                 h2 { font-size: 1.5rem; }
                 .form-group label { font-size: 0.9rem; }
                 .btn { width: 100%; margin-bottom: 10px; }
+                .table { font-size: 0.8rem; }
             }
         </style>
     </head>
@@ -89,7 +75,6 @@ def index():
                         </select>
                     </div>
                 </div>
-
                 <div class="form-row">
                     <div class="col-sm-3 mb-2">
                         <button type="submit" class="btn btn-primary btn-block">Terapkan Filter</button>
@@ -101,22 +86,14 @@ def index():
                         <a href="/" class="btn btn-secondary btn-block">Reset Filter</a>
                     </div>
                     <div class="col-sm-3 mb-2">
-                        <a href="?tampil_karyawan={{ 0 if tampil_karyawan else 1 }}" class="btn btn-info btn-block">
-                            {{ 'Sembunyikan' if tampil_karyawan else 'Tampil' }} Tabel Karyawan
-                        </a>
+                        <button id="btn-karyawan" type="button" class="btn btn-info btn-block">Tampil Tabel Karyawan</button>
                     </div>
                 </div>
             </form>
 
-           {% if tampil_karyawan %}
-<h4 class="mb-3">Data Karyawan</h4>
-<div class="table-responsive mb-4">
-    {{ karyawan_table|safe }}
-</div>
-{% endif %}
-
-<div id="total-tarif" class="mb-3"></div>
-<div class="table-responsive mb-5" id="tabel-parkir"></div>
+            <div id="tabel-karyawan" class="mb-4" style="display: none;"></div>
+            <div id="total-tarif" class="mb-3"></div>
+            <div class="table-responsive mb-5" id="tabel-parkir"></div>
         </div>
 
         <script>
@@ -126,22 +103,34 @@ def index():
                 .then(response => response.json())
                 .then(data => {
                     document.getElementById('tabel-parkir').innerHTML = data.table;
-                    if (data.total_tarif !== '') {
-                        document.getElementById('total-tarif').innerHTML =
-                            `<div class="alert alert-info text-center"><strong>Total Tarif:</strong> ${data.total_tarif}</div>`;
-                    } else {
-                        document.getElementById('total-tarif').innerHTML = '';
-                    }
+                    document.getElementById('total-tarif').innerHTML =
+                        data.total_tarif !== '' ?
+                        `<div class="alert alert-info text-center"><strong>Total Tarif:</strong> ${data.total_tarif}</div>` : '';
                 });
         }
 
+        function toggleKaryawanTable() {
+            const container = document.getElementById('tabel-karyawan');
+            if (container.style.display === 'none') {
+                fetch('/data_karyawan')
+                    .then(response => response.text())
+                    .then(html => {
+                        container.innerHTML = html;
+                        container.style.display = 'block';
+                    });
+            } else {
+                container.style.display = 'none';
+                container.innerHTML = '';
+            }
+        }
+
+        document.getElementById('btn-karyawan').addEventListener('click', toggleKaryawanTable);
         loadTableData();
         setInterval(loadTableData, 10000);
         </script>
     </body>
     </html>
-    ''', tampil_karyawan=tampil_karyawan, karyawan_table=karyawan_table)
-
+    ''')
 
 @app.route('/data')
 def get_table_ajax():
@@ -185,12 +174,30 @@ def get_table_ajax():
                 total_tarif = 'Tidak valid'
 
         df = df[['Nomor', 'Jam Masuk', 'Jam Keluar', 'Kendaraan', 'Tarif', 'Keterangan']]
-        table_html = df.to_html(classes='table table-bordered text-center', escape=False, index=False)
+        table_html = f'''
+        <div class="table-responsive">
+            {df.to_html(classes='table table-bordered text-center', escape=False, index=False)}
+        </div>
+        '''
         return jsonify({'table': table_html, 'total_tarif': total_tarif})
 
     except Exception as e:
         return jsonify({'table': f"<div class='alert alert-danger'>Error: {e}</div>", 'total_tarif': ''})
 
+@app.route('/data_karyawan')
+def get_karyawan_data():
+    try:
+        response = requests.get(CSV_KARYAWAN_URL)
+        response.raise_for_status()
+        df = pd.read_csv(StringIO(response.content.decode('utf-8'))).fillna('')
+        table_html = f'''
+        <div class="table-responsive">
+            {df.to_html(classes='table table-bordered text-center', escape=False, index=False)}
+        </div>
+        '''
+        return table_html
+    except Exception as e:
+        return f"<div class='alert alert-danger'>Gagal memuat data karyawan: {e}</div>"
 
 if __name__ == '__main__':
     app.run(debug=True, port=5050)
