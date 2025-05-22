@@ -65,16 +65,28 @@ def index():
             .menu-bar button:hover {
                 background-color: #e6e6e6;
             }
-            th, td { text-align: center; vertical-align: middle; }
+
+            th, td {
+                text-align: center;
+                vertical-align: middle;
+            }
+
+            table {
+                table-layout: fixed;
+                width: 100%;
+                word-wrap: break-word;
+            }
+
             @media (max-width: 576px) {
+                table td, table th {
+                    font-size: 11px;
+                    padding: 4px;
+                    word-break: break-word;
+                }
                 h2 { font-size: 1.5rem; }
                 .form-group label { font-size: 0.9rem; }
                 .btn { width: 100%; margin-bottom: 10px; }
                 .menu-bar { flex-direction: column; }
-            }
-            table {
-                table-layout: auto;
-                word-wrap: break-word;
             }
         </style>
     </head>
@@ -82,7 +94,7 @@ def index():
         <div class="container mt-4 mb-4">
             <div class="d-flex flex-column align-items-start mb-3">
                 <h2 class="mb-2">Data Parkir</h2>
-                <div class="menu-bar w-100 justify-content-start">
+                <div class="menu-bar w-100 justify-content-start d-flex">
                     <button onclick="toggleFilter()">Filter Data</button>
                     <button onclick="toggleKaryawan()">Tabel Karyawan</button>
                 </div>
@@ -130,7 +142,7 @@ def index():
 
             <div id="tabel-karyawan" class="mb-4"></div>
             <div id="total-tarif" class="mb-3"></div>
-            <div id="tabel-parkir" class="mb-5"></div>
+            <div class="mb-5" id="tabel-parkir"></div>
         </div>
 
         <script>
@@ -140,12 +152,8 @@ def index():
                     .then(response => response.json())
                     .then(data => {
                         document.getElementById('tabel-parkir').innerHTML = data.table;
-                        if (data.total_tarif !== '') {
-                            document.getElementById('total-tarif').innerHTML =
-                                `<div class="alert alert-info text-center"><strong>Total Tarif:</strong> ${data.total_tarif}</div>`;
-                        } else {
-                            document.getElementById('total-tarif').innerHTML = '';
-                        }
+                        document.getElementById('total-tarif').innerHTML = data.total_tarif
+                            ? `<div class="alert alert-info text-center"><strong>Total Tarif:</strong> ${data.total_tarif}</div>` : '';
                     });
             }
 
@@ -165,12 +173,8 @@ def index():
 
             function toggleFilter() {
                 const form = document.getElementById('filter-form');
-                if (form.style.display === 'none' || form.style.display === '') {
-                    form.style.display = 'block';
-                    document.getElementById('tabel-karyawan').innerHTML = '';
-                } else {
-                    form.style.display = 'none';
-                }
+                form.style.display = (form.style.display === 'none' || form.style.display === '') ? 'block' : 'none';
+                document.getElementById('tabel-karyawan').innerHTML = '';
             }
 
             loadTableData();
@@ -223,8 +227,7 @@ def get_table_ajax():
                 total_tarif = 'Tidak valid'
 
         df = df[['Nomor', 'Jam Masuk', 'Jam Keluar', 'Kendaraan', 'Tarif', 'Keterangan']]
-        # Tambahkan div class table-responsive di sini
-        table_html = f'<div class="table-responsive">{df.to_html(classes="table table-bordered text-center table-sm", escape=False, index=False)}</div>'
+        table_html = df.to_html(classes='table table-bordered text-center table-sm w-100', escape=False, index=False)
         return jsonify({'table': table_html, 'total_tarif': total_tarif})
 
     except Exception as e:
@@ -237,7 +240,7 @@ def get_karyawan_data():
         response = requests.get(CSV_KARYAWAN_URL)
         response.raise_for_status()
         df = pd.read_csv(StringIO(response.content.decode('utf-8'))).fillna('')
-        table_html = f'<div class="table-responsive">{df.to_html(classes="table table-bordered text-center table-sm", escape=False, index=False)}</div>'
+        table_html = df.to_html(classes='table table-bordered text-center table-sm w-100', escape=False, index=False)
         return table_html
     except Exception as e:
         return f"<div class='alert alert-danger'>Gagal memuat data karyawan: {e}</div>"
