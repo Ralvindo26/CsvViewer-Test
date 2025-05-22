@@ -92,15 +92,33 @@ def index():
     margin-right: 0.5rem;
     margin-bottom: 0.5rem;
 }
+.menu-link {
+    text-decoration: none;
+    color: #007bff;
+    font-size: 1rem;
+    font-weight: 500;
+    padding: 0.3rem 0.6rem;
+    display: inline-block;
+}
+
+.menu-link:hover {
+    text-decoration: underline;
+}
+
+@media (max-width: 576px) {
+    .menu-link {
+        font-size: 0.9rem;
+    }
+}
         </style>
     </head>
     <body>
         <div class="container mt-4 mb-4">
             <div class="d-flex flex-column align-items-start mb-3">
                 <h2 class="mb-2">Data Parkir</h2>
-               <div class="d-flex flex-wrap gap-2 mb-3">
-    <button onclick="toggleFilter()" class="btn btn-outline-primary mr-2">Filter Data</button>
-    <button onclick="toggleKaryawan()" class="btn btn-outline-primary">Tabel Karyawan</button>
+              <div class="menu-bar d-flex flex-row flex-wrap gap-3 mb-3">
+    <a href="javascript:void(0);" onclick="toggleFilter()" class="menu-link">Filter Data</a>
+    <a href="javascript:void(0);" onclick="toggleKaryawan()" class="menu-link">Tabel Karyawan</a>
 </div>
             </div>
 
