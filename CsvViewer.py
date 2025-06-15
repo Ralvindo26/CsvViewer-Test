@@ -5,27 +5,12 @@ from io import StringIO
 
 app = Flask(__name__)
 
-CSV_FILE_ID = '1aDVgRz6BEVb20armjOhwUE0Lyq0Q8zFB'
+# Ganti dengan ID file Google Drive Anda
+CSV_FILE_ID = '1xsbXo_xoc0pa2JYX4wMpvY9eML4VfKo1'
 CSV_URL = f"https://drive.google.com/uc?id={CSV_FILE_ID}&export=download"
 
-CSV_KARYAWAN_FILE_ID = '1r1clq7vLPdMw5nQ0fto4zLBbrhnbnoZ-'
-CSV_KARYAWAN_URL = f"https://drive.google.com/uc?id={CSV_KARYAWAN_FILE_ID}&export=download"
-
-FOTO_FOLDER_ID = '1SsQPURPWZ-FzfIJOZWFumY5XTBrNEQiO'
-API_KEY = 'AIzaSyDszO0AB7zcrqeMasdB0lCCzqAUfMxn9xk'
-
-
-def get_drive_image_url(nama_file):
-    query = f"name='{nama_file}.jpg' and '{FOTO_FOLDER_ID}' in parents"
-    url = f"https://www.googleapis.com/drive/v3/files?q={query}&key={API_KEY}&fields=files(id,name)"
-    response = requests.get(url)
-    if response.ok:
-        files = response.json().get('files')
-        if files:
-            file_id = files[0]['id']
-            return f"https://drive.google.com/uc?id={file_id}"
-    return None
-
+CSV_LOG_FILE_ID = '19iFxkZaQxvla8mwZSBGX7pSt5v_Ws9DM'
+CSV_LOG_URL = f"https://drive.google.com/uc?id={CSV_LOG_FILE_ID}&export=download"
 
 @app.route('/')
 def index():
@@ -33,240 +18,116 @@ def index():
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Data Parkir & Karyawan</title>
+        <title>Data Stok Barang & Log Penjualan</title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
         <style>
-            body {
-                padding-bottom: 50px;
+            body { padding-bottom: 50px; }
+            .menu-bar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; }
+            .menu-link {
+                background-color: #007bff;
+                color: white;
+                padding: 8px 12px;
+                text-decoration: none;
+                border-radius: 4px;
+                font-weight: 500;
             }
-            .menu-bar button {
-                flex: 1;
-                min-width: 120px;
-                white-space: nowrap;
+            .menu-link:hover, .menu-link.active {
+                background-color: #0056b3;
             }
-            @media (max-width: 400px) {
-                .menu-bar {
-                    background: #007bff;
-                    flex-direction: column;
-                    align-items: stretch;
-                }
-            }
-
-            .menu-bar button {
-                background-color: white;
-                color: #007bff;
-                border: none;
-                padding: 6px 16px;
-                border-radius: 5px;
-                font-weight: bold;
-                transition: background 0.3s;
-            }
-            .menu-bar button:hover {
-                background-color: #e6e6e6;
-            }
-
-            th, td {
-                text-align: center;
-                vertical-align: middle;
-            }
-
-            table {
-                table-layout: fixed;
-                width: 100%;
-                word-wrap: break-word;
-            }
-
-            @media (max-width: 576px) {
-                table td, table th {
-                    font-size: 11px;
-                    padding: 4px;
-                    word-break: break-word;
-                }
-                h2 { font-size: 1.5rem; }
-                .form-group label { font-size: 0.9rem; }
-                .btn { width: 100%; margin-bottom: 10px; }
-                .menu-bar { flex-direction: column; }
-            }
-            .gap-2 > * {
-    margin-right: 0.5rem;
-    margin-bottom: 0.5rem;
-}
-.menu-link {
-    text-decoration: none;
-    color: #007bff;
-    font-size: 1rem;
-    font-weight: 500;
-    padding: 0.3rem 0.6rem;
-    display: inline-block;
-}
-
-.menu-link:hover {
-    text-decoration: underline;
-}
-
-@media (max-width: 576px) {
-    .menu-link {
-        font-size: 0.9rem;
-    }
-}
+            table { table-layout: fixed; width: 100%; word-wrap: break-word; }
+            th, td { text-align: center; vertical-align: middle; }
         </style>
     </head>
     <body>
         <div class="container mt-4 mb-4">
-            <div class="d-flex flex-column align-items-start mb-3">
-                <h2 class="mb-2">Data Parkir</h2>
-              <div class="menu-bar d-flex flex-row flex-wrap gap-3 mb-3">
-    <a href="javascript:void(0);" onclick="toggleFilter()" class="menu-link">Filter Data</a>
-    <a href="javascript:void(0);" onclick="toggleKaryawan()" class="menu-link">Tabel Karyawan</a>
-</div>
+            <h2 class="mb-3">Data Stock Barang</h2>
+            <div class="menu-bar">
+                <a href="javascript:void(0);" class="menu-link active" onclick="showTab('stok')">Tabel Stok Barang</a>
+                <a href="javascript:void(0);" class="menu-link" onclick="showTab('log')">Tabel Log Penjualan</a>
             </div>
 
-            <form method="get" class="mb-4" id="filter-form" style="display: none;">
-                <div class="form-row">
-                    <div class="form-group col-sm-6">
-                        <label>Dari Tanggal</label>
-                        <input type="date" name="tgl_mulai" class="form-control" value="{{ request.args.get('tgl_mulai', '') }}">
-                    </div>
-                    <div class="form-group col-sm-6">
-                        <label>Sampai Tanggal</label>
-                        <input type="date" name="tgl_akhir" class="form-control" value="{{ request.args.get('tgl_akhir', '') }}">
-                    </div>
-                    <div class="form-group col-sm-6">
-                        <label>Jenis Kendaraan</label>
-                        <select name="kendaraan_jenis" class="form-control">
-                            <option value="semua">Semua</option>
-                            <option value="mobil" {% if request.args.get('kendaraan_jenis') == 'mobil' %}selected{% endif %}>Mobil</option>
-                            <option value="motor" {% if request.args.get('kendaraan_jenis') == 'motor' %}selected{% endif %}>Motor</option>
-                        </select>
-                    </div>
-                    <div class="form-group col-sm-6">
-                        <label>Jenis Parkir</label>
-                        <select name="keterangan" class="form-control">
-                            <option value="semua">Semua</option>
-                            <option value="parkir umum" {% if request.args.get('keterangan') == 'parkir umum' %}selected{% endif %}>Parkir Umum</option>
-                            <option value="parkir khusus" {% if request.args.get('keterangan') == 'parkir khusus' %}selected{% endif %}>Parkir Khusus</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="col-sm-4 mb-2">
-                        <button type="submit" class="btn btn-primary btn-block">Terapkan Filter</button>
-                    </div>
-                    <div class="col-sm-4 mb-2">
-                        <button type="submit" name="hitung" value="1" class="btn btn-success btn-block">Hitung Total Tarif</button>
-                    </div>
-                    <div class="col-sm-4 mb-2">
-                        <a href="/" class="btn btn-secondary btn-block">Reset Filter</a>
-                    </div>
-                </div>
-            </form>
-
-            <div id="tabel-karyawan" class="mb-4"></div>
-            <div id="total-tarif" class="mb-3"></div>
-            <div class="mb-5" id="tabel-parkir"></div>
+            <div id="stok-barang"></div>
+            <div id="log-penjualan" style="display: none;"></div>
         </div>
 
         <script>
-            function loadTableData() {
-                const params = new URLSearchParams(window.location.search);
-                fetch('/data?' + params.toString())
-                    .then(response => response.json())
-                    .then(data => {
-                        document.getElementById('tabel-parkir').innerHTML = data.table;
-                        document.getElementById('total-tarif').innerHTML = data.total_tarif
-                            ? `<div class="alert alert-info text-center"><strong>Total Tarif:</strong> ${data.total_tarif}</div>` : '';
+            function loadStokBarang() {
+                fetch('/data_stok')
+                    .then(response => response.text())
+                    .then(html => {
+                        document.getElementById('stok-barang').innerHTML = html;
                     });
             }
 
-            function toggleKaryawan() {
-                const div = document.getElementById('tabel-karyawan');
-                if (div.innerHTML.trim() === '') {
-                    fetch('/data_karyawan')
-                        .then(response => response.text())
-                        .then(html => {
-                            document.getElementById('filter-form').style.display = 'none';
-                            div.innerHTML = html;
-                        });
+            function loadLogPenjualan() {
+                fetch('/data_log')
+                    .then(response => response.text())
+                    .then(html => {
+                        document.getElementById('log-penjualan').innerHTML = html;
+                    });
+            }
+
+            function showTab(tab) {
+                document.querySelectorAll('.menu-link').forEach(el => el.classList.remove('active'));
+                if (tab === 'stok') {
+                    document.querySelector('.menu-link:nth-child(1)').classList.add('active');
+                    document.getElementById('stok-barang').style.display = 'block';
+                    document.getElementById('log-penjualan').style.display = 'none';
                 } else {
-                    div.innerHTML = '';
+                    document.querySelector('.menu-link:nth-child(2)').classList.add('active');
+                    document.getElementById('stok-barang').style.display = 'none';
+                    document.getElementById('log-penjualan').style.display = 'block';
+                    if (!document.getElementById('log-penjualan').innerHTML.trim()) {
+                        loadLogPenjualan();
+                    }
                 }
             }
 
-            function toggleFilter() {
-                const form = document.getElementById('filter-form');
-                form.style.display = (form.style.display === 'none' || form.style.display === '') ? 'block' : 'none';
-                document.getElementById('tabel-karyawan').innerHTML = '';
-            }
-
-            loadTableData();
-            setInterval(loadTableData, 10000);
+            // Load stok barang by default
+            loadStokBarang();
         </script>
     </body>
     </html>
     ''')
 
-
-@app.route('/data')
-def get_table_ajax():
+@app.route('/data_stok')
+def get_stok_data():
     try:
         response = requests.get(CSV_URL)
         response.raise_for_status()
         df = pd.read_csv(StringIO(response.content.decode('utf-8'))).fillna('')
-        df = df.rename(columns={'JamMasuk': 'Jam Masuk', 'JamKeluar': 'Jam Keluar'})
 
-        tgl_mulai = request.args.get('tgl_mulai')
-        tgl_akhir = request.args.get('tgl_akhir')
-        kendaraan_jenis = request.args.get('kendaraan_jenis')
-        jenis_parkir = request.args.get('keterangan')
+        df.columns = ['ID', 'Nama Barang', 'Stock Barang', 'Harga Beli', 'Harga Jual Umum', 'Harga Jual Reseller']
 
-        df['Jam Masuk'] = pd.to_datetime(df['Jam Masuk'], errors='coerce')
-
-        if tgl_mulai:
-            df = df[df['Jam Masuk'] >= pd.to_datetime(tgl_mulai)]
-        if tgl_akhir:
-            df = df[df['Jam Masuk'] <= pd.to_datetime(tgl_akhir)]
-        if kendaraan_jenis and kendaraan_jenis.lower() != 'semua':
-            df = df[df['Kendaraan'].str.lower() == kendaraan_jenis.lower()]
-        if jenis_parkir and jenis_parkir.lower() != 'semua':
-            df = df[df['Keterangan'].str.lower() == jenis_parkir.lower()]
-
-        def kendaraan_link(row):
-            kendaraan = row['Kendaraan']
-            if row['Keterangan'].lower().strip() == 'parkir khusus':
-                img_url = get_drive_image_url(kendaraan)
-                if img_url:
-                    return f'<a href="{img_url}" target="_blank">{kendaraan}</a>'
-            return kendaraan
-
-        df['Kendaraan'] = df.apply(kendaraan_link, axis=1)
-
-        total_tarif = ''
-        if request.args.get('hitung'):
-            try:
-                total_tarif = df['Tarif'].astype(float).sum()
-            except:
-                total_tarif = 'Tidak valid'
-
-        df = df[['Nomor', 'Jam Masuk', 'Jam Keluar', 'Kendaraan', 'Tarif', 'Keterangan']]
-        table_html = df.to_html(classes='table table-bordered text-center table-sm w-100', escape=False, index=False)
-        return jsonify({'table': table_html, 'total_tarif': total_tarif})
-
-    except Exception as e:
-        return jsonify({'table': f"<div class='alert alert-danger'>Error: {e}</div>", 'total_tarif': ''})
-
-
-@app.route('/data_karyawan')
-def get_karyawan_data():
-    try:
-        response = requests.get(CSV_KARYAWAN_URL)
-        response.raise_for_status()
-        df = pd.read_csv(StringIO(response.content.decode('utf-8'))).fillna('')
-        table_html = df.to_html(classes='table table-bordered text-center table-sm w-100', escape=False, index=False)
+        table_html = df.to_html(classes='table table-bordered table-sm text-center w-100', index=False)
         return table_html
     except Exception as e:
-        return f"<div class='alert alert-danger'>Gagal memuat data karyawan: {e}</div>"
+        return f"<div class='alert alert-danger'>Gagal memuat data stok: {e}</div>"
 
+@app.route('/data_log')
+def get_log_data():
+    try:
+        response = requests.get(CSV_LOG_URL)
+        response.raise_for_status()
+        df = pd.read_csv(StringIO(response.content.decode('utf-8'))).fillna('')
+
+        df.columns = ['Tanggal', 'Nama', 'Keterangan', 'Jumlah', 'Harga', 'Total', 'Untung']
+
+        for col in ['Harga', 'Total', 'Untung']:
+            df[col] = df[col].apply(
+                lambda x: '0' if float(str(x).replace(' ', '').replace(',', '').strip()) == 0 
+                else f"{float(str(x).replace(' ', '').replace(',', '').strip()):,.2f}"
+            )
+
+        table_html = f'''
+        <div class="table-responsive">
+            {df.to_html(classes='table table-bordered table-sm text-center w-100', index=False)}
+        </div>
+        '''
+        return table_html
+    except Exception as e:
+        return f"<div class='alert alert-danger'>Gagal memuat log penjualan: {e}</div>"
 
 if __name__ == '__main__':
     app.run(debug=True, port=5050)
