@@ -22,22 +22,31 @@ def index():
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
         <style>
-            body { padding-bottom: 50px; }
-            .menu-bar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; }
-            .menu-link {
-                background-color: #007bff;
-                color: white;
-                padding: 8px 12px;
-                text-decoration: none;
-                border-radius: 4px;
-                font-weight: 500;
-            }
-            .menu-link:hover, .menu-link.active {
-                background-color: #0056b3;
-            }
-            table { table-layout: fixed; width: 100%; word-wrap: break-word; }
-            th, td { text-align: center; vertical-align: middle; }
-        </style>
+    body { padding-bottom: 50px; }
+    .menu-bar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; }
+    .menu-link {
+        background-color: #007bff;
+        color: white;
+        padding: 8px 12px;
+        text-decoration: none;
+        border-radius: 4px;
+        font-weight: 500;
+    }
+    .menu-link:hover, .menu-link.active {
+        background-color: #0056b3;
+    }
+    table { 
+        table-layout: fixed; 
+        width: 100%; 
+        word-wrap: break-word; 
+        font-size: 0.75rem; /* Ukuran font kecil (12px) */
+    }
+    th, td { 
+        text-align: center; 
+        vertical-align: middle; 
+        padding: 6px !important;
+    }
+</style>
     </head>
     <body>
         <div class="container mt-4 mb-4">
