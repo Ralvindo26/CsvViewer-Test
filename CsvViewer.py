@@ -43,6 +43,11 @@ def index():
                 text-align: center;
                 vertical-align: middle;
             }
+            table thead th {
+                background-color: #d2e3fc; /* warna biru muda */
+                color: #000;               /* teks hitam */
+                font-weight: bold;
+            }
         </style>
     </head>
     <body>
