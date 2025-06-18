@@ -2,7 +2,6 @@ from flask import Flask, render_template_string, request
 import pandas as pd
 import requests
 from io import StringIO
-from datetime import datetime
 
 app = Flask(__name__)
 
@@ -26,12 +25,24 @@ def index():
             body { padding-bottom: 50px; font-size: 0.85rem; }
             .menu-bar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
             .menu-link {
-                background-color: skyblue; color: white; padding: 6px 12px;
+                background-color: Skyblue; color: white; padding: 6px 12px;
                 text-decoration: none; border-radius: 4px; font-weight: 500;
             }
             .menu-link:hover, .menu-link.active { background-color: skyblue; }
-            table { font-size: 0.75rem; }
-            th, td { text-align: center; vertical-align: middle; padding: 6px !important; }
+
+            table {
+                table-layout: fixed;
+                width: 100%;
+                word-wrap: break-word;
+                font-size: 0.75rem;
+            }
+            th, td {
+                word-break: break-word;
+                white-space: normal;
+                padding: 6px !important;
+                text-align: center;
+                vertical-align: middle;
+            }
         </style>
     </head>
     <body>
@@ -42,6 +53,7 @@ def index():
                 <a href="javascript:void(0);" class="menu-link" onclick="showTab('log')">Tabel Log Penjualan</a>
             </div>
 
+            <!-- Pencarian dan Filter -->
             <div id="search-container">
                 <input type="text" class="form-control form-control-sm mb-2" id="search-barang" placeholder="Cari Nama Barang..." onkeyup="filterStok()">
             </div>
@@ -50,7 +62,7 @@ def index():
                 <div class="col"><input type="date" id="to-date" class="form-control form-control-sm" /></div>
                 <div class="col-auto">
                     <button class="btn btn-sm btn-primary" onclick="filterLog()">Filter</button>
-                    <button class="btn btn-sm btn-secondary ml-1" onclick="resetFilter()">Reset</button>
+                    <button class="btn btn-sm btn-secondary" onclick="resetLog()">Reset</button>
                 </div>
             </div>
 
@@ -95,7 +107,7 @@ def index():
                     });
             }
 
-            function resetFilter() {
+            function resetLog() {
                 document.getElementById('from-date').value = '';
                 document.getElementById('to-date').value = '';
                 loadLogPenjualan();
@@ -150,10 +162,12 @@ def get_log_data():
         df = pd.read_csv(StringIO(response.content.decode('utf-8'))).fillna('')
         df.columns = ['Tanggal', 'Nama', 'Keterangan', 'Jumlah', 'Harga', 'Total Harga', 'Penerima', 'Keuntungan']
 
+        # Filter tanggal
         if from_date and to_date:
             df['Tanggal'] = pd.to_datetime(df['Tanggal'], errors='coerce')
             df = df[(df['Tanggal'] >= from_date) & (df['Tanggal'] <= to_date)]
 
+        # Format angka dan hitung total keuntungan
         total_untung = 0
         for col in ['Harga', 'Total Harga', 'Keuntungan']:
             df[col] = df[col].apply(lambda x: str(x).replace(' ', '').replace(',', '').strip())
@@ -164,9 +178,7 @@ def get_log_data():
 
         table_html = f'''
         <div class="mt-2 font-weight-bold text-right">Total Keuntungan: Rp {total_untung:,.2f}</div>
-        <div class="table-responsive mt-2">
-            {df.to_html(classes='table table-bordered table-sm text-center w-100', index=False)}
-        </div>
+        {df.to_html(classes='table table-bordered table-sm text-center w-100', index=False, border=0)}
         '''
         return table_html
     except Exception as e:
