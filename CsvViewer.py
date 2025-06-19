@@ -5,7 +5,6 @@ from io import StringIO
 
 app = Flask(__name__)
 
-# Ganti dengan ID file Google Drive Anda
 CSV_FILE_ID = '1xsbXo_xoc0pa2JYX4wMpvY9eML4VfKo1'
 CSV_URL = f"https://drive.google.com/uc?id={CSV_FILE_ID}&export=download"
 
@@ -44,8 +43,8 @@ def index():
                 vertical-align: middle;
             }
             table thead th {
-                background-color: #d2e3fc; /* warna biru muda */
-                color: #000;               /* teks hitam */
+                background-color: #d2e3fc;
+                color: #000;
                 font-weight: bold;
             }
         </style>
@@ -58,7 +57,6 @@ def index():
                 <a href="javascript:void(0);" class="menu-link" onclick="showTab('log')">Tabel Log Penjualan</a>
             </div>
 
-            <!-- Pencarian dan Filter -->
             <div id="search-container">
                 <input type="text" class="form-control form-control-sm mb-2" id="search-barang" placeholder="Cari Nama Barang..." onkeyup="filterStok()">
             </div>
@@ -76,12 +74,52 @@ def index():
         </div>
 
         <script>
+            let currentSort = { column: null, direction: 'none' };
+
             function loadStokBarang() {
                 fetch('/data_stok')
                     .then(response => response.text())
                     .then(html => {
                         document.getElementById('stok-barang').innerHTML = html;
+
+                        document.getElementById('sort-id').onclick = function() {
+                            sortTable('stok-barang', 0, 'id');
+                        };
+
+                        document.getElementById('sort-stock').onclick = function() {
+                            sortTable('stok-barang', 2, 'stock');
+                        };
                     });
+            }
+
+            function sortTable(containerId, colIndex, colName) {
+                const table = document.querySelector(`#${containerId} table`);
+                const tbody = table.querySelector('tbody');
+                const rows = Array.from(tbody.rows);
+
+                let direction = 'asc';
+                if (currentSort.column === colName && currentSort.direction === 'asc') {
+                    direction = 'desc';
+                } else if (currentSort.column === colName && currentSort.direction === 'desc') {
+                    direction = 'none';
+                }
+
+                if (direction === 'none') {
+                    loadStokBarang();
+                    currentSort = { column: null, direction: 'none' };
+                    return;
+                }
+
+                rows.sort((a, b) => {
+                    const valA = parseFloat(a.cells[colIndex].innerText.replace(',', '')) || 0;
+                    const valB = parseFloat(b.cells[colIndex].innerText.replace(',', '')) || 0;
+                    return direction === 'asc' ? valA - valB : valB - valA;
+                });
+
+                tbody.innerHTML = '';
+                rows.forEach(row => tbody.appendChild(row));
+
+                currentSort = { column: colName, direction };
             }
 
             function loadLogPenjualan() {
@@ -138,7 +176,7 @@ def index():
                 }
             }
 
-            loadStokBarang(); // default load
+            loadStokBarang();
         </script>
     </body>
     </html>
@@ -152,7 +190,13 @@ def get_stok_data():
         df = pd.read_csv(StringIO(response.content.decode('utf-8'))).fillna('')
         df.columns = ['ID', 'Nama Barang', 'Stock Barang', 'Harga Beli', 'Harga Jual Umum', 'Harga Jual Reseller']
 
-        return df.to_html(classes='table table-bordered table-sm text-center w-100', index=False)
+        html = df.to_html(classes='table table-bordered table-sm text-center w-100', index=False, border=0)
+
+        # Buat header kolom ID dan Stock Barang bisa diklik untuk sort TANPA panah
+        html = html.replace('<th>ID</th>', '<th id="sort-id" style="cursor:pointer;">ID</th>')
+        html = html.replace('<th>Stock Barang</th>', '<th id="sort-stock" style="cursor:pointer;">Stock Barang</th>')
+
+        return html
     except Exception as e:
         return f"<div class='alert alert-danger'>Gagal memuat data stok: {e}</div>"
 
@@ -167,12 +211,10 @@ def get_log_data():
         df = pd.read_csv(StringIO(response.content.decode('utf-8'))).fillna('')
         df.columns = ['Tanggal', 'Nama', 'Keterangan', 'Jumlah', 'Harga', 'Total Harga', 'Penerima', 'Keuntungan']
 
-        # Filter tanggal
         if from_date and to_date:
             df['Tanggal'] = pd.to_datetime(df['Tanggal'], errors='coerce')
             df = df[(df['Tanggal'] >= from_date) & (df['Tanggal'] <= to_date)]
 
-        # Format angka dan hitung total keuntungan
         total_untung = 0
         for col in ['Harga', 'Total Harga', 'Keuntungan']:
             df[col] = df[col].apply(lambda x: str(x).replace(' ', '').replace(',', '').strip())
