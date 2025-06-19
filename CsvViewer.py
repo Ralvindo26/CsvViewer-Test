@@ -46,6 +46,7 @@ def index():
                 background-color: #d2e3fc;
                 color: #000;
                 font-weight: bold;
+                cursor: pointer;
             }
         </style>
     </head>
@@ -60,6 +61,7 @@ def index():
             <div id="search-container">
                 <input type="text" class="form-control form-control-sm mb-2" id="search-barang" placeholder="Cari Nama Barang..." onkeyup="filterStok()">
             </div>
+
             <div class="form-row mb-2" id="log-filter" style="display: none;">
                 <div class="col"><input type="date" id="from-date" class="form-control form-control-sm" /></div>
                 <div class="col"><input type="date" id="to-date" class="form-control form-control-sm" /></div>
@@ -74,52 +76,12 @@ def index():
         </div>
 
         <script>
-            let currentSort = { column: null, direction: 'none' };
-
             function loadStokBarang() {
                 fetch('/data_stok')
                     .then(response => response.text())
                     .then(html => {
                         document.getElementById('stok-barang').innerHTML = html;
-
-                        document.getElementById('sort-id').onclick = function() {
-                            sortTable('stok-barang', 0, 'id');
-                        };
-
-                        document.getElementById('sort-stock').onclick = function() {
-                            sortTable('stok-barang', 2, 'stock');
-                        };
                     });
-            }
-
-            function sortTable(containerId, colIndex, colName) {
-                const table = document.querySelector(`#${containerId} table`);
-                const tbody = table.querySelector('tbody');
-                const rows = Array.from(tbody.rows);
-
-                let direction = 'asc';
-                if (currentSort.column === colName && currentSort.direction === 'asc') {
-                    direction = 'desc';
-                } else if (currentSort.column === colName && currentSort.direction === 'desc') {
-                    direction = 'none';
-                }
-
-                if (direction === 'none') {
-                    loadStokBarang();
-                    currentSort = { column: null, direction: 'none' };
-                    return;
-                }
-
-                rows.sort((a, b) => {
-                    const valA = parseFloat(a.cells[colIndex].innerText.replace(',', '')) || 0;
-                    const valB = parseFloat(b.cells[colIndex].innerText.replace(',', '')) || 0;
-                    return direction === 'asc' ? valA - valB : valB - valA;
-                });
-
-                tbody.innerHTML = '';
-                rows.forEach(row => tbody.appendChild(row));
-
-                currentSort = { column: colName, direction };
             }
 
             function loadLogPenjualan() {
@@ -142,7 +104,6 @@ def index():
             function filterLog() {
                 const fromDate = document.getElementById('from-date').value;
                 const toDate = document.getElementById('to-date').value;
-
                 fetch(`/data_log?from=${fromDate}&to=${toDate}`)
                     .then(response => response.text())
                     .then(html => {
@@ -176,6 +137,41 @@ def index():
                 }
             }
 
+            const sortStates = { id: 'default', stock: 'default' };
+
+            document.addEventListener('click', function (e) {
+                const table = document.querySelector('#stok-barang table');
+                const rows = Array.from(table.tBodies[0].rows);
+                let colIndex = -1;
+
+                if (e.target.id === 'sort-id') {
+                    colIndex = 0;
+                    const key = 'id';
+                    toggleSort(rows, colIndex, key);
+                }
+
+                if (e.target.id === 'sort-stock') {
+                    colIndex = Array.from(table.tHead.rows[0].cells).findIndex(cell => cell.textContent.includes('Stock Barang'));
+                    const key = 'stock';
+                    toggleSort(rows, colIndex, key);
+                }
+            });
+
+            function toggleSort(rows, colIndex, key) {
+                const tbody = document.querySelector('#stok-barang table tbody');
+
+                if (sortStates[key] === 'default' || sortStates[key] === 'desc') {
+                    rows.sort((a, b) => Number(a.cells[colIndex].textContent) - Number(b.cells[colIndex].textContent));
+                    sortStates[key] = 'asc';
+                } else {
+                    rows.sort((a, b) => Number(b.cells[colIndex].textContent) - Number(a.cells[colIndex].textContent));
+                    sortStates[key] = 'desc';
+                }
+
+                tbody.innerHTML = '';
+                rows.forEach(row => tbody.appendChild(row));
+            }
+
             loadStokBarang();
         </script>
     </body>
@@ -192,9 +188,8 @@ def get_stok_data():
 
         html = df.to_html(classes='table table-bordered table-sm text-center w-100', index=False, border=0)
 
-        # Buat header kolom ID dan Stock Barang bisa diklik untuk sort TANPA panah
-        html = html.replace('<th>ID</th>', '<th id="sort-id" style="cursor:pointer;">ID</th>')
-        html = html.replace('<th>Stock Barang</th>', '<th id="sort-stock" style="cursor:pointer;">Stock Barang</th>')
+        html = html.replace('<th>ID</th>', '<th id="sort-id" style="cursor:pointer;">ID &#x21C5;</th>')
+        html = html.replace('<th>Stock Barang</th>', '<th id="sort-stock" style="cursor:pointer;">Stock Barang &#x21C5;</th>')
 
         return html
     except Exception as e:
