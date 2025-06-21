@@ -1,4 +1,4 @@
-from flask import Flask, render_template_string, request
+﻿from flask import Flask, render_template_string, request
 import pandas as pd
 import requests
 from io import StringIO
@@ -10,6 +10,42 @@ CSV_URL = f"https://drive.google.com/uc?id={CSV_FILE_ID}&export=download"
 
 CSV_LOG_FILE_ID = '19iFxkZaQxvla8mwZSBGX7pSt5v_Ws9DM'
 CSV_LOG_URL = f"https://drive.google.com/uc?id={CSV_LOG_FILE_ID}&export=download"
+
+API_KEY = 'AIzaSyDszO0AB7zcrqeMasdB0lCCzqAUfMxn9xk'
+FOLDER_ID = '1vho3OqCxglBW2QSS4wuDAgm_ccdN1y2z'  # Ganti dengan ID folder fotobarang
+
+def cari_id_gambar(nama_barang):
+    nama_file = nama_barang.lower().replace(' ', '_')
+    query = f"'{FOLDER_ID}' in parents and name contains '{nama_file}' and mimeType contains 'image/' and trashed = false"
+    url = f"https://www.googleapis.com/drive/v3/files?q={query}&key={API_KEY}&fields=files(id,name)"
+    response = requests.get(url)
+    data = response.json()
+    if 'files' in data and data['files']:
+        return f"https://drive.google.com/uc?id={data['files'][0]['id']}"
+    else:
+        return None
+
+    # --- Ambil semua gambar dari folder hanya sekali ---
+def ambil_semua_gambar_dari_folder():
+    query = f"'{FOLDER_ID}' in parents and mimeType contains 'image/' and trashed = false"
+    url = f"https://www.googleapis.com/drive/v3/files?q={query}&key={API_KEY}&fields=files(id,name)"
+    response = requests.get(url)
+    data = response.json()
+    gambar_map = {}
+
+    if 'files' in data:
+        for f in data['files']:
+            nama = f['name'].lower().replace(' ', '_')
+            gambar_map[nama] = f"https://drive.google.com/uc?id={f['id']}"
+    return gambar_map
+
+# --- Fungsi bantu untuk mencocokkan gambar ke nama barang ---
+def cari_gambar_dari_map(nama_barang, gambar_map):
+    nama_file = nama_barang.lower().replace(' ', '_')
+    for key in gambar_map:
+        if key.startswith(nama_file):  # Cek awalan
+            return gambar_map[key]
+    return ''
 
 @app.route('/')
 def index():
@@ -184,14 +220,32 @@ def get_stok_data():
         response = requests.get(CSV_URL)
         response.raise_for_status()
         df = pd.read_csv(StringIO(response.content.decode('utf-8'))).fillna('')
-        df.columns = ['ID', 'Nama Barang', 'Stock Barang', 'Harga Beli', 'Harga Jual Umum', 'Harga Jual Reseller']
+        df.columns = ['ID', 'Nama Barang', 'Stock Barang', 'Harga Beli', 'Harga Jual Umum', 'Harga Jual Reseller', 'Gambar']
 
-        html = df.to_html(classes='table table-bordered table-sm text-center w-100', index=False, border=0)
+        # Ambil semua gambar hanya sekali
+        gambar_map = ambil_semua_gambar_dari_folder()
 
-        html = html.replace('<th>ID</th>', '<th id="sort-id" style="cursor:pointer;">ID &#x21C5;</th>')
-        html = html.replace('<th>Stock Barang</th>', '<th id="sort-stock" style="cursor:pointer;">Stock Barang &#x21C5;</th>')
+        # Tambahkan kolom Gambar (URL gambar) ke dataframe, tapi tidak ditampilkan di HTML
+        df['Gambar'] = df['Nama Barang'].apply(lambda nama: cari_gambar_dari_map(nama, gambar_map) or '')
+
+        # Ubah Nama Barang jadi hyperlink jika ada gambar
+        df['Nama Barang'] = df.apply(
+            lambda row: (
+                f"<a href='{row['Gambar']}' target='_blank'>{row['Nama Barang']}</a>"
+                if row['Gambar'] else row['Nama Barang']
+            ), axis=1
+        )
+
+        # Drop kolom Gambar dari tampilan HTML (tapi tetap ada di df jika dibutuhkan)
+        df_to_show = df.drop(columns=['Gambar'])
+
+        # Konversi ke HTML
+        html = df_to_show.to_html(classes='table table-bordered table-sm text-center w-100', index=False, border=0, escape=False)
+        html = html.replace('<th>ID</th>', '<th id="sort-id" style="cursor:pointer;">ID</th>')
+        html = html.replace('<th>Stock Barang</th>', '<th id="sort-stock" style="cursor:pointer;">Stock Barang</th>')
 
         return html
+
     except Exception as e:
         return f"<div class='alert alert-danger'>Gagal memuat data stok: {e}</div>"
 
